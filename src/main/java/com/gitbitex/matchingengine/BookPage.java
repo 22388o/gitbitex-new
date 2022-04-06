@@ -50,6 +50,15 @@ public class BookPage {
             }
         }
 
+        // Unable to match the entire size, cancel the order
+        if (takerOrder.getTimeInForcePolicy() == Order.TimeInForcePolicy.FOK) {
+            if (!isEntireSizeMatch(takerOrder)) {
+                logs.add(orderDoneLog(command.getOffset(), takerOrder));
+                logs.get(logs.size() - 1).setCommandFinished(true);
+                return logs;
+            }
+        }
+
         List<BookOrder> matchedOrders = new ArrayList<>();
 
         MATCHING:
@@ -108,8 +117,12 @@ public class BookPage {
         // Note: The market order will never be added to the order book, and the market order without fully filled
         // will be marked as cancelled
         if (takerOrder.getType() == Order.OrderType.LIMIT && takerOrder.getSize().compareTo(BigDecimal.ZERO) > 0) {
-            oppositePage.addOrder(takerOrder);
-            logs.add(orderOpenLog(command.getOffset(), takerOrder));
+            if (takerOrder.getTimeInForcePolicy() == Order.TimeInForcePolicy.IOC) {
+                logs.add(orderDoneLog(command.getOffset(), takerOrder));
+            } else {
+                oppositePage.addOrder(takerOrder);
+                logs.add(orderOpenLog(command.getOffset(), takerOrder));
+            }
         } else {
             logs.add(orderDoneLog(command.getOffset(), takerOrder));
         }
@@ -184,6 +197,28 @@ public class BookPage {
         return ((takerOrder.getSide() == Order.OrderSide.BUY && takerOrder.getPrice().compareTo(makerOrderPrice) >= 0)
                 ||
                 (takerOrder.getSide() == Order.OrderSide.SELL && takerOrder.getPrice().compareTo(makerOrderPrice) <= 0));
+    }
+
+    private boolean isEntireSizeMatch(BookOrder takerOrder) {
+        BigDecimal takerSize = takerOrder.getSize();
+
+        MATCHING:
+        for (PageLine line : lines.values()) {
+            // check whether there is price crossing between the taker and the maker
+            if (!isPriceCrossed(takerOrder, line.getPrice())) {
+                break;
+            }
+
+            for (BookOrder makerOrder : line.getOrders()) {
+                BigDecimal tradeSize = takerSize.min(makerOrder.getSize());
+                takerSize = takerSize.subtract(tradeSize);
+                if (takerSize.compareTo(BigDecimal.ZERO) == 0) {
+                    break MATCHING;
+                }
+            }
+        }
+
+        return takerSize.compareTo(BigDecimal.ZERO) == 0;
     }
 
     private OrderDoneLog.DoneReason determineDoneReason(BookOrder order) {

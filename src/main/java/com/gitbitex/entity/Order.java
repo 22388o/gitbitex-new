@@ -61,7 +61,8 @@ public class Order {
      * Time in force policies provide guarantees about the lifetime of an order. There are four policies: good till
      * canceled GTC, good till time GTT, immediate or cancel IOC, and fill or kill FOK.
      */
-    private String timeInForce;
+    @Enumerated(EnumType.STRING)
+    private TimeInForcePolicy timeInForcePolicy;
 
     private boolean settled;
 

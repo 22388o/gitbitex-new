@@ -42,7 +42,9 @@ public class OrderController {
             order.setPrice(new BigDecimal(request.getPrice()));
         }
         order.setSize(new BigDecimal(request.getSize()));
-        order.setTimeInForce(request.getTimeInForce());
+        if (request.getTimeInForce() != null) {
+            order.setTimeInForcePolicy(Order.TimeInForcePolicy.valueOf(request.getTimeInForce().toUpperCase()));
+        }
         order.setClientOid(request.getClientOid());
         if (request.getFunds() != null) {
             order.setFunds(new BigDecimal(request.getFunds()));

@@ -20,6 +20,7 @@ public class BookOrder {
     private BigDecimal price;
     private BigDecimal funds;
     private boolean postOnly;
+    private Order.TimeInForcePolicy timeInForcePolicy;
 
     public BookOrder() {
     }
@@ -35,6 +36,7 @@ public class BookOrder {
         order.setType(this.type);
         order.setSide(this.side);
         order.setPostOnly(this.postOnly);
+        order.setTimeInForcePolicy(this.timeInForcePolicy);
         order.setSize(size != null ? new BigDecimal(size.toPlainString()) : null);
         order.setPrice(price != null ? new BigDecimal(price.toPlainString()) : null);
         order.setFunds(funds != null ? new BigDecimal(funds.toPlainString()) : null);
