@@ -60,18 +60,6 @@ public class Order {
     /**
      * Time in force policies provide guarantees about the lifetime of an order. There are four policies: good till
      * canceled GTC, good till time GTT, immediate or cancel IOC, and fill or kill FOK.
-     * <p>
-     * GTC Good till canceled orders remain open on the book until canceled. This is the default behavior if no policy
-     * is specified.
-     * <p>
-     * GTT Good till time orders remain open on the book until canceled or the allotted cancel_after is depleted on
-     * the matching engine. GTT orders are guaranteed to cancel before any other order is processed after the
-     * cancel_after timestamp which is returned by the API. A day is considered 24 hours.
-     * <p>
-     * IOC Immediate or cancel orders instantly cancel the remaining size of the limit order instead of opening it
-     * on the book.
-     * <p>
-     * FOK Fill or kill orders are rejected if the entire size cannot be matched.
      */
     private String timeInForce;
 
@@ -124,9 +112,23 @@ public class Order {
     }
 
     public enum TimeInForcePolicy {
+        /**
+         * GTC Good till canceled orders remain open on the book until canceled. This is the default behavior if no policy is specified.
+         */
         GTC,
+        /**
+         * GTT Good till time orders remain open on the book until canceled or the allotted cancel_after is depleted on
+         * the matching engine. GTT orders are guaranteed to cancel before any other order is processed after the
+         * cancel_after timestamp which is returned by the API. A day is considered 24 hours.
+         */
         GTT,
+        /**
+         * IOC Immediate or cancel orders instantly cancel the remaining size of the limit order instead of opening it on the book.
+         */
         IOC,
+        /**
+         * FOK Fill or kill orders are rejected if the entire size cannot be matched.
+         */
         FOK,
     }
 }
