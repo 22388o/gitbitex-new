@@ -92,21 +92,21 @@ public class BookPage {
                 }
 
                 // Take the minimum size of taker and maker as trade size
-                BigDecimal dealSize = takerSize.min(makerOrder.getSize());
+                BigDecimal tradeSize = takerSize.min(makerOrder.getSize());
 
                 // adjust the size of taker order
-                takerOrder.setSize(takerOrder.getSize().subtract(dealSize));
+                takerOrder.setSize(takerOrder.getSize().subtract(tradeSize));
 
                 // only market-buy order use funds
                 if (takerOrder.getSide() == Order.OrderSide.BUY && takerOrder.getType() == Order.OrderType.MARKET) {
-                    takerOrder.setFunds(takerOrder.getFunds().subtract(dealSize.multiply(price)));
+                    takerOrder.setFunds(takerOrder.getFunds().subtract(tradeSize.multiply(price)));
                 }
 
                 // adjust the size of maker order
-                makerOrder.setSize(makerOrder.getSize().subtract(dealSize));
+                makerOrder.setSize(makerOrder.getSize().subtract(tradeSize));
 
                 // create a new match log
-                logs.add(orderMatchLog(command.getOffset(), takerOrder, makerOrder, dealSize));
+                logs.add(orderMatchLog(command.getOffset(), takerOrder, makerOrder, tradeSize));
 
                 matchedOrders.add(makerOrder);
             }
