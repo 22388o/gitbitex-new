@@ -31,6 +31,8 @@ public class BookPage {
     public List<OrderBookLog> executeCommand(NewOrderCommand command, BookPage oppositePage) {
         List<OrderBookLog> logs = new ArrayList<>();
 
+        // Receive a new order, check the order status, if the order status is not NEW, terminate the matching, maybe
+        // the order is rejected because the account does not have enough balance
         Order order = command.getOrder();
         logs.add(orderReceivedLog(command.getOffset(), order));
         if (order.getStatus() != Order.OrderStatus.NEW) {
@@ -50,7 +52,7 @@ public class BookPage {
             }
         }
 
-        // Unable to match the entire size, cancel the order
+        // Unable to match the entire size for FOK order, cancel the order
         if (takerOrder.getTimeInForcePolicy() == Order.TimeInForcePolicy.FOK) {
             if (!isEntireSizeMatch(takerOrder)) {
                 logs.add(orderDoneLog(command.getOffset(), takerOrder));
