@@ -21,6 +21,7 @@ public class BookOrder {
     private BigDecimal funds;
     private boolean postOnly;
     private Order.TimeInForcePolicy timeInForcePolicy;
+    private Long expirationTime;
 
     public BookOrder() {
     }
