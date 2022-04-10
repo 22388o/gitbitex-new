@@ -194,11 +194,11 @@ input[type="number"] {
 }
 .logo {
   display: inline-block;
-  background: url(../image/HudexGlobal-400-04.png) no-repeat center;
+  background: url(../image/logo.svg) no-repeat center;
   background-size: contain;
 }
 .logo.logo-light {
-  background-image: url(../image/HudexGlobal-400-07.png);
+  background-image: url(../image/logo-light.svg);
 }
 .btn.btn-lg {
   border-radius: 4px;
