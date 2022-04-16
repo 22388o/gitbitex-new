@@ -2,15 +2,15 @@ package com.gitbitex.order;
 
 import com.alibaba.fastjson.JSON;
 import com.gitbitex.account.AccountManager;
+import com.gitbitex.account.command.CancelOrderCommand;
 import com.gitbitex.account.command.PlaceOrderCommand;
 import com.gitbitex.exception.ErrorCode;
 import com.gitbitex.exception.ServiceException;
-import com.gitbitex.feed.message.OrderMessage;
 import com.gitbitex.kafka.KafkaMessageProducer;
-import com.gitbitex.matchingengine.command.CancelOrderCommand;
 import com.gitbitex.order.entity.Fill;
 import com.gitbitex.order.entity.Order;
 import com.gitbitex.order.entity.Order.OrderSide;
+import com.gitbitex.order.entity.Order.OrderStatus;
 import com.gitbitex.order.entity.Order.OrderType;
 import com.gitbitex.order.entity.Order.TimeInForcePolicy;
 import com.gitbitex.order.repository.FillRepository;
@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
@@ -40,7 +41,8 @@ public class OrderManager {
     private final KafkaMessageProducer messageProducer;
     private final AccountManager accountManager;
 
-    public String placeOrder(String userId, String productId, OrderType orderType, OrderSide side, BigDecimal size,
+    public String placeOrder(String orderId, String userId, String productId, OrderType orderType, OrderSide side,
+                             BigDecimal size,
                              BigDecimal price, BigDecimal funds, String clientOrderId, TimeInForcePolicy timeInForcePolicy)
             throws ExecutionException, InterruptedException {
         Product product = productManager.getProductById(productId);
@@ -87,7 +89,7 @@ public class OrderManager {
 
         // build order
         Order order = new Order();
-        order.setOrderId(UUID.randomUUID().toString());
+        order.setOrderId(orderId);
         order.setUserId(userId);
         order.setProductId(productId);
         order.setType(orderType);
@@ -97,12 +99,18 @@ public class OrderManager {
         order.setSize(size);
         order.setFunds(funds);
         order.setPrice(price);
+        order.setStatus(OrderStatus.NEW);
+        order.setTime(new Date());
 
-        // send order to matching-engine
+        // send order to accountant
         PlaceOrderCommand placeOrderCommand = new PlaceOrderCommand();
         placeOrderCommand.setUserId(order.getUserId());
         placeOrderCommand.setOrder(order);
-        messageProducer.sendToAccountant(placeOrderCommand);
+        messageProducer.sendAccountCommand(placeOrderCommand, (metadata, e) -> {
+            if (e != null) {
+                logger.error("send account command error: {}", e.getMessage(), e);
+            }
+        });
 
         return order.getOrderId();
     }
@@ -112,7 +120,16 @@ public class OrderManager {
         cancelOrderCommand.setUserId(order.getUserId());
         cancelOrderCommand.setOrderId(order.getOrderId());
         cancelOrderCommand.setProductId(order.getProductId());
-        messageProducer.sendToMatchingEngine(cancelOrderCommand);
+        messageProducer.sendAccountCommand(cancelOrderCommand, null);
+    }
+
+    public void cancelOrder(String orderId, String userId, String productId)
+            throws ExecutionException, InterruptedException {
+        CancelOrderCommand cancelOrderCommand = new CancelOrderCommand();
+        cancelOrderCommand.setUserId(userId);
+        cancelOrderCommand.setOrderId(orderId);
+        cancelOrderCommand.setProductId(productId);
+        messageProducer.sendAccountCommand(cancelOrderCommand, null);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -127,16 +144,15 @@ public class OrderManager {
         order.setFilledSize(order.getFilledSize() != null ? order.getFilledSize().add(size) : size);
         order.setExecutedValue(order.getExecutedValue() != null ? order.getExecutedValue().add(funds) : funds);
 
-        /*if (order.getSide() == OrderSide.BUY) {
+        if (order.getSide() == OrderSide.BUY) {
             if (order.getExecutedValue().compareTo(order.getFunds()) > 0) {
                 throw new RuntimeException("bad order: " + JSON.toJSONString(order));
             }
         } else {
-            if (order.getExecutedValue().compareTo(order.getFunds()) > 0) {
+            if (order.getFilledSize().compareTo(order.getSize()) > 0) {
                 throw new RuntimeException("bad order: " + JSON.toJSONString(order));
             }
         }
-*/
         save(order);
 
         fill = new Fill();
@@ -148,7 +164,6 @@ public class OrderManager {
         fill.setFunds(funds);
         fill.setSide(order.getSide());
         fillRepository.save(fill);
-
         return fill.getFillId();
     }
 
@@ -157,22 +172,7 @@ public class OrderManager {
 
         // send order update notify
         try {
-            OrderMessage message = new OrderMessage();
-            message.setType("order");
-            message.setUserId(order.getUserId());
-            message.setProductId(order.getProductId());
-            message.setId(order.getOrderId());
-            message.setPrice(order.getPrice().toPlainString());
-            message.setSize(order.getSize().toPlainString());
-            message.setFunds(order.getFunds().toPlainString());
-            message.setSide(order.getSide().name().toLowerCase());
-            message.setOrderType(order.getType().name().toLowerCase());
-            message.setCreatedAt(order.getCreatedAt().toInstant().toString());
-            message.setFillFees(order.getFillFees() != null ? order.getFillFees().toPlainString() : "0");
-            message.setFilledSize(order.getFilledSize() != null ? order.getFilledSize().toPlainString() : "0");
-            message.setExecutedValue(order.getExecutedValue() != null ? order.getExecutedValue().toPlainString() : "0");
-            message.setStatus(order.getStatus().name().toLowerCase());
-            redissonClient.getTopic("order", StringCodec.INSTANCE).publish(JSON.toJSONString(message));
+            redissonClient.getTopic("order", StringCodec.INSTANCE).publishAsync(JSON.toJSONString(order));
         } catch (Exception e) {
             logger.error("notify error: {}", e.getMessage(), e);
         }

@@ -90,6 +90,11 @@
             <version>31.1-jre</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.java-websocket</groupId>
+            <artifactId>Java-WebSocket</artifactId>
+            <version>1.3.8</version>
+        </dependency>
 
         <dependency>
             <groupId>mysql</groupId>
@@ -123,9 +128,12 @@
                 <configuration>
                     <container>
                         <mainClass>com.gitbitex.Application</mainClass>
+                        <jvmFlags>
+                            <jvmFlag>-XX:ErrorFile=/logs/hs_err_pid_%p.log</jvmFlag>
+                        </jvmFlags>
                     </container>
                     <from>
-                        <image>openjdk:8-jdk-alpine</image>
+                        <image>openjdk:14</image>
                     </from>
                     <to>
                         <image>registry.hub.docker.com/greensheng/gitbitex</image>

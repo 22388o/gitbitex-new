@@ -1,20 +1,21 @@
 package com.gitbitex.openapi.controller;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import javax.validation.Valid;
 
+import com.gitbitex.openapi.model.OrderDto;
+import com.gitbitex.openapi.model.PagedList;
+import com.gitbitex.openapi.model.PlaceOrderRequest;
+import com.gitbitex.order.OrderManager;
 import com.gitbitex.order.entity.Order;
 import com.gitbitex.order.entity.Order.OrderSide;
 import com.gitbitex.order.entity.Order.OrderType;
 import com.gitbitex.order.entity.Order.TimeInForcePolicy;
-import com.gitbitex.user.entity.User;
-import com.gitbitex.order.OrderManager;
-import com.gitbitex.openapi.model.PlaceOrderRequest;
 import com.gitbitex.order.repository.OrderRepository;
-import com.gitbitex.openapi.model.OrderDto;
-import com.gitbitex.openapi.model.PagedList;
+import com.gitbitex.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.data.domain.Page;
@@ -53,7 +54,7 @@ public class OrderController {
         TimeInForcePolicy timeInForcePolicy = request.getTimeInForce() != null ? TimeInForcePolicy.valueOf(
             request.getTimeInForce().toUpperCase()) : null;
 
-        String orderId = orderManager.placeOrder(currentUser.getUserId(), request.getProductId(), type, side, size,
+        String orderId = orderManager.placeOrder(UUID.randomUUID().toString(), currentUser.getUserId(), request.getProductId(), type, side, size,
             price, funds, request.getClientOid(), timeInForcePolicy);
 
         OrderDto orderDto = new OrderDto();
@@ -89,7 +90,7 @@ public class OrderController {
         OrderSide orderSide = side != null ? Order.OrderSide.valueOf(side.toUpperCase()) : null;
 
         Page<Order> orderPage = orderRepository.findAll(currentUser.getUserId(), productId, Order.OrderStatus.OPEN,
-            orderSide, 1, 10000);
+            orderSide, 1, 20000);
 
         for (Order order : orderPage.getContent()) {
             orderManager.cancelOrder(order);
